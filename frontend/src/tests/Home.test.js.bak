@@ -1,0 +1,22 @@
+import { render, screen } from '@testing-library/react';
+import { Home } from '../../../../src/pages/Home';
+import { LanguageProvider } from '../../../../src/context/LanguageContext';
+import { BrowserRouter } from 'react-router-dom';
+
+describe('Home Page', () => {
+  it('renders all 4 journey cards', () => {
+    // Assuming some testing framework like Jest is set up
+    render(
+      <LanguageProvider>
+        <BrowserRouter>
+          <Home />
+        </BrowserRouter>
+      </LanguageProvider>
+    );
+    
+    expect(screen.getByText('First-time voter')).toBeInTheDocument();
+    expect(screen.getByText('Returning voter')).toBeInTheDocument();
+    expect(screen.getByText('NRI voter')).toBeInTheDocument();
+    expect(screen.getByText('Just curious')).toBeInTheDocument();
+  });
+});

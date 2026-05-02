@@ -1,0 +1,19 @@
+{
+  "name": "Disha - AI Civic Guide",
+  "short_name": "Disha",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#F97316",
+  "background_color": "#ffffff",
+  "display": "standalone"
+}

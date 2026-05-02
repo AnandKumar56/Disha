@@ -1,0 +1,19 @@
+import { render, screen, fireEvent } from '@testing-library/react';
+import { Eligibility } from '../../../../src/pages/Eligibility';
+import { LanguageProvider } from '../../../../src/context/LanguageContext';
+import { BrowserRouter } from 'react-router-dom';
+
+describe('Eligibility Page', () => {
+  it('renders the first question on load', () => {
+    render(
+      <LanguageProvider>
+        <BrowserRouter>
+          <Eligibility />
+        </BrowserRouter>
+      </LanguageProvider>
+    );
+    expect(screen.getByText(/citizen of india/i)).toBeInTheDocument();
+    expect(screen.getByText(/yes/i)).toBeInTheDocument();
+    expect(screen.getByText(/no/i)).toBeInTheDocument();
+  });
+});
