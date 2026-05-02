@@ -9,7 +9,7 @@
   --color-text-primary: #111827;
   --color-text-secondary: #6B7280;
   --color-text-muted: #9CA3AF;
-  --font-sans: system-ui, -apple-system, sans-serif;
+  --font-sans: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif;
 }
 
 :root {
@@ -27,7 +27,7 @@
 body {
   background-color: var(--color-bg);
   color: var(--color-text-primary);
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif;
   margin: 0;
   line-height: 1.6;
 }

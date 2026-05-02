@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import { trackEvent, trackPageView } from '../utils/analytics';
 
 export const Timeline: React.FC = () => {
   const { t } = useLanguage();
@@ -8,6 +9,7 @@ export const Timeline: React.FC = () => {
 
   useEffect(() => {
     document.title = 'Election Timeline | Disha';
+    trackPageView('timeline');
   }, []);
 
   const phases = [
@@ -21,6 +23,9 @@ export const Timeline: React.FC = () => {
   ];
 
   const togglePhase = (id: number) => {
+    if (expandedPhase !== id) {
+      trackEvent('timeline_phase_expanded', { phase: id });
+    }
     setExpandedPhase(expandedPhase === id ? null : id);
   };
 

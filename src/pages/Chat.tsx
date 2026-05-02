@@ -1,6 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { Send, Bot } from 'lucide-react';
+import { trackEvent, trackPageView } from '../utils/analytics';
+
+function useDebounce<T>(value: T, delay: number): T {
+  const [debounced, setDebounced] = React.useState(value);
+  React.useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debounced;
+}
 
 interface ChatMessage {
   role: 'user' | 'bot';
@@ -14,8 +24,11 @@ export const Chat: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const debouncedInput = useDebounce(inputValue, 300);
+
   useEffect(() => {
     document.title = 'Chat with Disha | India Elections Guide';
+    trackPageView('chat');
   }, []);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -35,6 +48,8 @@ export const Chat: React.FC = () => {
 
   const handleSend = async (text: string) => {
     if (!text.trim()) return;
+
+    trackEvent('chat_message_sent');
 
     const newMessages = [...messages, { role: 'user' as const, content: text }];
     setMessages(newMessages);
@@ -93,7 +108,10 @@ export const Chat: React.FC = () => {
                 {starterQuestions.map((q, idx) => (
                   <button
                     key={idx}
-                    onClick={() => handleSend(q)}
+                    onClick={() => {
+                      trackEvent('starter_question_used');
+                      handleSend(q);
+                    }}
                     className="p-3 text-sm text-left border border-gray-200 rounded-[8px] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition-colors focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
                   >
                     {q}
@@ -176,7 +194,7 @@ export const Chat: React.FC = () => {
             </button>
           </form>
           <span className="text-xs text-gray-400 text-right block mt-1">
-            {inputValue.length}/1000
+            {debouncedInput.length}/1000
           </span>
         </div>
       </div>

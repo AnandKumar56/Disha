@@ -1,12 +1,14 @@
 import React, { useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { ExternalLink, CheckCircle2 } from 'lucide-react';
+import { trackEvent, trackPageView } from '../utils/analytics';
 
 export const Register: React.FC = () => {
   const { t } = useLanguage();
 
   useEffect(() => {
     document.title = 'Register to Vote | Disha';
+    trackPageView('register');
   }, []);
 
   const steps = [
@@ -60,6 +62,7 @@ export const Register: React.FC = () => {
           target="_blank" 
           rel="noopener noreferrer"
           aria-label={`${t('btnRegister')} (opens in new tab)`}
+          onClick={() => trackEvent('register_cta_clicked')}
           className="btn-primary flex items-center justify-center gap-2"
         >
           {t('btnRegister')} <ExternalLink size={18} aria-hidden="true" />

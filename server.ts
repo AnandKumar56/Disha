@@ -2,6 +2,10 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import 'dotenv/config';
 import { GoogleGenAI } from "@google/genai";
+import helmet from 'helmet';
+
+const responseCache = new Map<string, { reply: string; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 async function startServer() {
   const app = express();
@@ -9,15 +13,11 @@ async function startServer() {
 
   // JSON middleware
   app.use(express.json());
-
-  // Security headers (FIX 10)
-  app.use((req, res, next) => {
-    res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-    next();
-  });
+  
+  // Security headers using Helmet
+  app.use(helmet({
+    contentSecurityPolicy: false, // Vite uses inline scripts in dev
+  }));
 
   // CORS — scoped to /api routes only (FIX 9)
   app.use('/api', (req, res, next) => {
@@ -58,9 +58,17 @@ async function startServer() {
 
   // API Routes (Backend logic goes here)
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok" });
+    res.json({ status: 'ok', app: 'disha', version: '1.0.0' });
   });
 
+  /**
+   * POST /api/chat
+   * Proxies user messages to Gemini API server-side.
+   * Keeps API key secure — never exposed to client.
+   * @param {string} message - User's message (max 1000 chars)
+   * @param {Array} history - Conversation history for context
+   * @returns {Object} { reply: string }
+   */
   app.post("/api/chat", async (req, res) => {
     try {
       if (!ai) {
@@ -80,6 +88,12 @@ async function startServer() {
       // Validate history field (FIX 6)
       if (history !== undefined && !Array.isArray(history)) {
         return res.status(400).json({ error: "History must be an array" });
+      }
+
+      const cacheKey = message.trim().toLowerCase().slice(0, 100);
+      const cached = responseCache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        return res.json({ reply: cached.reply });
       }
       
       const systemInstruction = `You are Disha, a friendly, knowledgeable, and trusted guide to India's election process, created to help Indian citizens exercise their democratic rights.
@@ -116,7 +130,19 @@ Response rules:
         }
       });
 
-      res.json({ reply: response.text });
+      const replyText = response.text || "";
+      
+      responseCache.set(cacheKey, { reply: replyText, timestamp: Date.now() });
+
+      // Clean old entries periodically
+      if (responseCache.size > 100) {
+        const now = Date.now();
+        for (const [key, val] of responseCache.entries()) {
+          if (now - val.timestamp > CACHE_TTL) responseCache.delete(key);
+        }
+      }
+
+      res.json({ reply: replyText });
     } catch (error: any) {
       console.error("Gemini API Error:", error);
       res.status(500).json({ error: "Failed to fetch response" });

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { trackPageView } from '../utils/analytics';
 
 export const Learn: React.FC = () => {
   const { t } = useLanguage();
@@ -8,6 +9,7 @@ export const Learn: React.FC = () => {
 
   useEffect(() => {
     document.title = 'EVM & VVPAT Explained | Disha';
+    trackPageView('learn');
   }, []);
 
   const toggleCard = (index: number) => {

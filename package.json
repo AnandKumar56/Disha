@@ -1,7 +1,9 @@
 {
   "name": "disha",
+  "version": "1.0.0",
+  "description": "AI-powered bilingual guide to India's election process. Built with Gemini API and Google Cloud Run.",
+  "keywords": ["india", "elections", "gemini", "react", "typescript", "bilingual", "civic-tech"],
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
@@ -19,6 +21,7 @@
     "@vitejs/plugin-react": "^5.0.4",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
+    "helmet": "^8.1.0",
     "lucide-react": "^0.546.0",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",

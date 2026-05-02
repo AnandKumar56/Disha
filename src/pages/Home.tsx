@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { Vote, CheckCircle, Globe, Lightbulb } from 'lucide-react';
+import { trackEvent, trackPageView } from '../utils/analytics';
 
 export const Home: React.FC = () => {
   const { t, language } = useLanguage();
@@ -9,6 +10,7 @@ export const Home: React.FC = () => {
 
   useEffect(() => {
     document.title = 'Disha — Your Guide to India\'s Elections';
+    trackPageView('home');
   }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent, path: string) => {
@@ -20,24 +22,28 @@ export const Home: React.FC = () => {
 
   const cards = [
     {
+      id: 'first_time_voter',
       title: t('firstTimeVoter'),
       icon: <Vote className="w-8 h-8 text-[var(--color-primary)]" aria-hidden="true" />,
       path: '/eligibility',
       bg: 'bg-orange-50'
     },
     {
+      id: 'returning_voter',
       title: t('returningVoter'),
       icon: <CheckCircle className="w-8 h-8 text-[var(--color-secondary)]" aria-hidden="true" />,
       path: '/timeline',
       bg: 'bg-green-50'
     },
     {
+      id: 'nri_voter',
       title: t('nriVoter'),
       icon: <Globe className="w-8 h-8 text-blue-500" aria-hidden="true" />,
       path: '/register',
       bg: 'bg-blue-50'
     },
     {
+      id: 'just_curious',
       title: t('justCurious'),
       icon: <Lightbulb className="w-8 h-8 text-purple-500" aria-hidden="true" />,
       path: '/chat',
@@ -71,8 +77,13 @@ export const Home: React.FC = () => {
             key={idx}
             role="button"
             tabIndex={0}
-            onClick={() => navigate(card.path)}
-            onKeyDown={(e) => handleKeyDown(e, card.path)}
+            onClick={() => { trackEvent('journey_selected', { journey: card.id }); navigate(card.path); }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                trackEvent('journey_selected', { journey: card.id });
+                handleKeyDown(e, card.path);
+              }
+            }}
             aria-label={`Navigate to ${card.title}`}
             className="card flex items-center justify-between cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
           >

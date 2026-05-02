@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { CheckCircle2, XCircle, ArrowRight, RefreshCw, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { trackEvent, trackPageView } from '../utils/analytics';
 
 export const Eligibility: React.FC = () => {
   const { t } = useLanguage();
 
   useEffect(() => {
     document.title = 'Voter Eligibility Check | Disha';
+    trackPageView('eligibility');
   }, []);
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<boolean[]>([]);
@@ -37,6 +39,12 @@ export const Eligibility: React.FC = () => {
 
   const isComplete = currentStep >= questions.length;
   const isEligible = answers.every(v => v === true);
+
+  useEffect(() => {
+    if (isComplete) {
+      trackEvent('eligibility_result', { result: isEligible ? 'eligible' : 'ineligible' });
+    }
+  }, [isComplete, isEligible]);
 
   return (
     <div className="max-w-2xl mx-auto py-8 px-4">

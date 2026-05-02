@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
 import { Language, translations } from '../translations';
+import { trackEvent } from '../utils/analytics';
 
 interface LanguageContextProps {
   language: Language;
@@ -14,6 +15,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   useEffect(() => {
     document.documentElement.lang = language;
+    trackEvent('language_toggled', { language });
   }, [language]);
 
   const t = (key: keyof typeof translations['en']): string => {
