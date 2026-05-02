@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { Send, Bot } from 'lucide-react';
 import { trackEvent, trackPageView } from '../utils/analytics';
+import { translateText } from '../utils/translate';
+import { MAX_MESSAGE_LENGTH } from '../utils/constants';
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debounced, setDebounced] = React.useState(value);
@@ -18,7 +20,7 @@ interface ChatMessage {
 }
 
 export const Chat: React.FC = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -75,7 +77,13 @@ export const Chat: React.FC = () => {
         throw new Error(data.error || 'Failed to fetch response');
       }
 
-      setMessages([...newMessages, { role: 'bot', content: data.reply }]);
+      let reply = data.reply;
+      if (language === 'hi') {
+        const translatedReply = await translateText(reply, 'hi');
+        reply = translatedReply;
+      }
+
+      setMessages([...newMessages, { role: 'bot', content: reply }]);
     } catch (err: any) {
       setError(t('chatError'));
       console.error(err);
@@ -96,6 +104,14 @@ export const Chat: React.FC = () => {
       </div>
 
       <div className="flex-1 bg-white border border-gray-200 rounded-[8px] flex flex-col overflow-hidden shadow-sm">
+        <div
+          aria-live="polite"
+          aria-atomic="false"
+          className="sr-only"
+          id="chat-announcer"
+        >
+          {messages.length > 0 ? messages[messages.length - 1].content : ''}
+        </div>
         {/* Messages Area */}
         <div className="flex-1 p-4 md:p-6 overflow-y-auto space-y-6 bg-[var(--color-bg)]">
           {messages.length === 0 ? (
@@ -180,7 +196,7 @@ export const Chat: React.FC = () => {
               onChange={(e) => setInputValue(e.target.value)}
               placeholder={t('chatInputPlaceholder')}
               disabled={isLoading}
-              maxLength={1000}
+              maxLength={MAX_MESSAGE_LENGTH}
               className="flex-1 bg-gray-50 border border-gray-200 rounded-[8px] px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:bg-white transition-colors"
             />
             <button
@@ -194,7 +210,7 @@ export const Chat: React.FC = () => {
             </button>
           </form>
           <span className="text-xs text-gray-400 text-right block mt-1">
-            {debouncedInput.length}/1000
+            {debouncedInput.length}/{MAX_MESSAGE_LENGTH}
           </span>
         </div>
       </div>

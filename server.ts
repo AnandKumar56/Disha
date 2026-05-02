@@ -3,9 +3,18 @@ import { createServer as createViteServer } from "vite";
 import 'dotenv/config';
 import { GoogleGenAI } from "@google/genai";
 import helmet from 'helmet';
+import cors from 'cors';
+import { body, validationResult } from 'express-validator';
+import { Translate } from '@google-cloud/translate/build/src/index.js';
+import compression from 'compression';
+import { MAX_MESSAGE_LENGTH, MAX_HISTORY_LENGTH, CACHE_TTL_MS, APP_NAME } from './src/utils/constants.js';
 
 const responseCache = new Map<string, { reply: string; timestamp: number }>();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL = CACHE_TTL_MS;
+
+const translateClient = new Translate({
+  key: process.env.GOOGLE_TRANSLATE_API_KEY || process.env.GEMINI_API_KEY
+});
 
 async function startServer() {
   const app = express();
@@ -13,21 +22,30 @@ async function startServer() {
 
   // JSON middleware
   app.use(express.json());
+
+  app.use(cors({
+    origin: process.env.APP_URL || 'http://localhost:5173',
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type'],
+    credentials: false
+  }));
+
+  app.use(compression());
   
   // Security headers using Helmet
   app.use(helmet({
-    contentSecurityPolicy: false, // Vite uses inline scripts in dev
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://www.googletagmanager.com", "https://www.google-analytics.com"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        connectSrc: ["'self'", "https://www.google-analytics.com", "https://region1.google-analytics.com"],
+        imgSrc: ["'self'", "data:", "https://www.google-analytics.com"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
   }));
-
-  // CORS — scoped to /api routes only (FIX 9)
-  app.use('/api', (req, res, next) => {
-    const allowedOrigin = process.env.APP_URL || '*';
-    res.header('Access-Control-Allow-Origin', allowedOrigin);
-    res.header('Access-Control-Allow-Headers', 'Content-Type');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    if (req.method === 'OPTIONS') return res.status(204).end();
-    next();
-  });
 
   // Rate limiter — scoped to /api routes only (FIX 1)
   const rateLimitMap = new Map();
@@ -58,8 +76,37 @@ async function startServer() {
 
   // API Routes (Backend logic goes here)
   app.get("/api/health", (req, res) => {
-    res.json({ status: 'ok', app: 'disha', version: '1.0.0' });
+    res.json({ status: 'ok', app: APP_NAME, version: '1.0.0' });
   });
+
+  /**
+   * POST /api/translate
+   * Translates text using Google Cloud Translation API.
+   * Used for dynamic Hindi translation of user-generated content.
+   * @param {string} text - Text to translate
+   * @param {string} targetLang - Target language code ('hi' or 'en')
+   * @returns {Object} { translatedText: string }
+   */
+  app.post('/api/translate',
+    [
+      body('text').isString().trim().notEmpty().isLength({ max: 500 }),
+      body('targetLang').isIn(['hi', 'en']),
+    ],
+    async (req, res) => {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ error: 'Invalid input' });
+      }
+      const { text, targetLang } = req.body;
+      try {
+        const [translation] = await translateClient.translate(text, targetLang);
+        res.json({ translatedText: translation });
+      } catch (error) {
+        // Fallback gracefully if API key not set
+        res.json({ translatedText: text });
+      }
+    }
+  );
 
   /**
    * POST /api/chat
@@ -69,26 +116,22 @@ async function startServer() {
    * @param {Array} history - Conversation history for context
    * @returns {Object} { reply: string }
    */
-  app.post("/api/chat", async (req, res) => {
-    try {
-      if (!ai) {
-        return res.status(500).json({ error: "Gemini API key is missing on the server" });
+  app.post('/api/chat',
+    [
+      body('message').isString().trim().notEmpty().isLength({ max: MAX_MESSAGE_LENGTH }),
+      body('history').optional().isArray({ max: MAX_HISTORY_LENGTH }),
+    ],
+    async (req, res) => {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ error: 'Invalid input', details: errors.array() });
       }
+      try {
+        if (!ai) {
+          return res.status(500).json({ error: "Gemini API key is missing on the server" });
+        }
 
-      const { message, history } = req.body;
-      
-      if (!message || typeof message !== 'string' || message.trim() === '') {
-        return res.status(400).json({ error: "Message is required" });
-      }
-
-      if (message.length > 1000) {
-        return res.status(400).json({ error: "Message too long" });
-      }
-
-      // Validate history field (FIX 6)
-      if (history !== undefined && !Array.isArray(history)) {
-        return res.status(400).json({ error: "History must be an array" });
-      }
+        const { message, history } = req.body;
 
       const cacheKey = message.trim().toLowerCase().slice(0, 100);
       const cached = responseCache.get(cacheKey);
