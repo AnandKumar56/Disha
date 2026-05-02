@@ -5,7 +5,8 @@ import { GoogleGenAI } from "@google/genai";
 import helmet from 'helmet';
 import cors from 'cors';
 import { body, validationResult } from 'express-validator';
-import { Translate } from '@google-cloud/translate/build/src/index.js';
+import { v2 } from '@google-cloud/translate';
+const { Translate } = v2;
 import compression from 'compression';
 import { MAX_MESSAGE_LENGTH, MAX_HISTORY_LENGTH, CACHE_TTL_MS, APP_NAME } from './src/utils/constants.js';
 
